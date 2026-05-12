@@ -31,6 +31,8 @@ class ContaService:
         
     @staticmethod
     def creditar(numero: str, valor: Decimal) -> Conta:
+        if valor <= 0:
+            raise ValueError("O valor deve ser maior que zero.")
 
         conta = ContaService._get_conta(numero)
 
@@ -48,6 +50,8 @@ class ContaService:
     
     @staticmethod
     def debitar(numero: str, valor: Decimal) -> Conta:
+        if valor <= 0:
+            raise ValueError("Valor inválido.")
 
         conta = ContaService._get_conta(numero)
 
@@ -63,6 +67,8 @@ class ContaService:
     @staticmethod
     @transaction.atomic
     def transferir(origem_num: str, destino_num: str, valor: Decimal):
+        if valor <= 0:
+            raise ValueError("Valor inválido.")
 
         origem = ContaService._get_conta(origem_num)
         destino = ContaService._get_conta(destino_num)
