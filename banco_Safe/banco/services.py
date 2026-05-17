@@ -6,18 +6,30 @@ from .models import Conta
 class ContaService:
     
     @staticmethod
-    def cadastrar_conta(usuario, numero: str, tipo: str = Conta.TIPO_SIMPLES) -> Conta:
+    def cadastrar_conta(usuario, numero: str, tipo: str = Conta.TIPO_SIMPLES, saldo: Decimal = 0.0) -> Conta:
         if Conta.objects.filter(numero=numero).exists():
             raise ValueError("Uma conta com este número já existe.")
+        
+        if tipo == Conta.TIPO_SIMPLES and saldo <= 0.0:
+            raise ValueError("conta simples com saldo não-positivo.")
 
         pontuacao_inicial = 10 if tipo == Conta.TIPO_BONUS else 0
 
-        conta = Conta.objects.create(
-            usuario=usuario,
-            numero=numero,
-            tipo=tipo,
-            pontuacao=pontuacao_inicial
-        )
+        if tipo == Conta.TIPO_SIMPLES:
+            conta = Conta.objects.create(
+                usuario=usuario,
+                numero=numero,
+                tipo=tipo,
+                pontuacao=pontuacao_inicial,
+                saldo = saldo
+            )
+        else:
+            conta = Conta.objects.create(
+                usuario=usuario,
+                numero=numero,
+                tipo=tipo,
+                pontuacao=pontuacao_inicial
+            )
 
         return conta
 
