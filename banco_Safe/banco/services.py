@@ -6,6 +6,7 @@ from .models import Conta
 class ContaService:
     
     @staticmethod
+<<<<<<< HEAD
     def cadastrar_conta(usuario, numero: str, tipo: str = Conta.TIPO_SIMPLES, saldo: Decimal = 0.0) -> Conta:
         if Conta.objects.filter(numero=numero).exists():
             raise ValueError("Uma conta com este número já existe.")
@@ -30,6 +31,21 @@ class ContaService:
                 tipo=tipo,
                 pontuacao=pontuacao_inicial
             )
+=======
+    def cadastrar_conta(usuario, numero: str, tipo: str = Conta.TIPO_SIMPLES) -> Conta:
+        if Conta.objects.filter(numero=numero).exists():
+            raise ValueError("Uma conta com este número já existe.")
+
+        pontuacao_inicial = 10 if tipo == Conta.TIPO_BONUS else 0
+
+        conta = Conta.objects.create(
+            usuario=usuario,
+            numero=numero,
+            tipo=tipo,
+            pontuacao=pontuacao_inicial,
+            saldo=saldo_inicial
+        )
+>>>>>>> main
 
         return conta
 
@@ -43,8 +59,11 @@ class ContaService:
         
     @staticmethod
     def creditar(numero: str, valor: Decimal) -> Conta:
+<<<<<<< HEAD
         if valor <= 0:
             raise ValueError("O valor deve ser maior que zero.")
+=======
+>>>>>>> main
 
         conta = ContaService._get_conta(numero)
 
@@ -60,30 +79,39 @@ class ContaService:
 
         return conta
     
-    @staticmethod
-    def debitar(numero: str, valor: Decimal) -> Conta:
+@staticmethod
+    def debitar(numero: str, valor: Decimal) -> 'Conta':
         if valor <= 0:
-            raise ValueError("Valor inválido.")
-
-        conta = ContaService._get_conta(numero)
-
-        if conta.saldo < valor:
-            raise ValueError("Saldo insuficiente.")
-
-        conta.saldo -= valor
-
+            raise ValueError("O valor de débito deve ser positivo.")
+        
+        conta = Conta.objects.get(numero=numero)
+        
+        if conta.tipo_conta in [TipoConta.SIMPLES, TipoConta.BONUS]:
+            if (conta.saldo - valor) < Decimal('-1000.00'):
+                raise ValueError("Operação negada. O limite de saldo negativo (R$ -1000,00) seria ultrapassado.")
+        elif conta.saldo < valor:
+            raise ValueError("Saldo insuficiente para realizar o débito.")
+        
+        conta.saldo -= valor 
         conta.save()
-
         return conta
     
-    @staticmethod
-    @transaction.atomic
-    def transferir(origem_num: str, destino_num: str, valor: Decimal):
+@staticmethod
+    def transferir(numero_origem: str, numero_destino: str, valor: Decimal):
         if valor <= 0:
-            raise ValueError("Valor inválido.")
+            raise ValueError("O valor da transferência deve ser positivo.")
+        if numero_origem == numero_destino:
+            raise ValueError("Conta de origem e destino não podem ser iguais.")
 
-        origem = ContaService._get_conta(origem_num)
-        destino = ContaService._get_conta(destino_num)
+        with transaction.atomic():
+            conta_origem = Conta.objects.get(numero=numero_origem)
+            conta_destino = Conta.objects.get(numero=numero_destino)
+            
+            if conta_origem.tipo_conta in [TipoConta.SIMPLES, TipoConta.BONUS]:
+                if (conta_origem.saldo - valor) < Decimal('-1000.00'):
+                    raise ValueError("Operação negada. O limite de saldo negativo (R$ -1000,00) seria ultrapassado na conta de origem.")
+            elif conta_origem.saldo < valor:
+                raise ValueError("Saldo insuficiente na conta de origem.")
 
         if origem.saldo < valor:
             raise ValueError("Saldo insuficiente.")
@@ -93,7 +121,7 @@ class ContaService:
 
         if destino.tipo == Conta.TIPO_BONUS:
 
-            pontos = int(valor // 200)
+            pontos = int(valor // 150)
 
             destino.pontuacao += pontos
 
@@ -114,4 +142,8 @@ class ContaService:
 
             conta.saldo += rendimento
 
+<<<<<<< HEAD
             conta.save()
+=======
+            conta.save()
+>>>>>>> main
