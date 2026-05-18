@@ -75,7 +75,7 @@ class ContaService:
 
         if destino.tipo == Conta.TIPO_BONUS:
 
-            pontos = int(valor // 200)
+            pontos = int(valor // 150)
 
             destino.pontuacao += pontos
 
