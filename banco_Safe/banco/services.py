@@ -81,11 +81,20 @@ class ContaService:
             elif conta_origem.saldo < valor:
                 raise ValueError("Saldo insuficiente na conta de origem.")
 
-            conta_origem.saldo -= valor
-            conta_destino.saldo += valor
-            
-            conta_origem.save()
-            conta_destino.save()
+        if origem.saldo < valor:
+            raise ValueError("Saldo insuficiente.")
+
+        origem.saldo -= valor
+        destino.saldo += valor
+
+        if destino.tipo == Conta.TIPO_BONUS:
+
+            pontos = int(valor // 150)
+
+            destino.pontuacao += pontos
+
+        origem.save()
+        destino.save()
 
         return origem, destino
     
