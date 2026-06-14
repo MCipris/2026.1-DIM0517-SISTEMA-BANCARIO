@@ -1,33 +1,41 @@
 from decimal import Decimal
 from django.db import transaction
-from django.core.exceptions import ObjectDoesNotExist
 from .models import Conta
 
 class ContaService:
     
     @staticmethod
+    def _get_conta(numero: str) -> Conta:
+        try:
+            return Conta.objects.get(numero=numero)
+        except Conta.DoesNotExist:
+            raise ValueError("Conta não encontrada.")
+
+    @staticmethod
     def cadastrar_conta(usuario, numero: str, tipo: str = Conta.TIPO_SIMPLES) -> Conta:
         if Conta.objects.filter(numero=numero).exists():
             raise ValueError("Uma conta com este número já existe.")
+        
+        if tipo not in [Conta.TIPO_SIMPLES, Conta.TIPO_BONUS, Conta.TIPO_POUPANCA,]:
+            raise ValueError("Tipo de conta inválido.")
 
-        pontuacao_inicial = 10 if tipo == Conta.TIPO_BONUS else 0
+        if tipo == Conta.TIPO_BONUS:
+            pontuacao_inicial = 10
+        else:
+            pontuacao_inicial = 0
 
         conta = Conta.objects.create(
-            usuario=usuario,
-            numero=numero,
-            tipo=tipo,
-            pontuacao=pontuacao_inicial
-        )
+                usuario=usuario,
+                numero=numero,
+                tipo=tipo,
+                pontuacao=pontuacao_inicial)
 
         return conta
 
     @staticmethod
     def consultar_saldo(numero: str) -> Decimal:
-        try:
-            conta = Conta.objects.get(numero=numero)
-            return conta.saldo
-        except ObjectDoesNotExist:
-            raise ValueError("Conta não encontrada.")
+        conta = ContaService._get_conta(numero)
+        return conta.saldo
         
     @staticmethod
     def creditar(numero: str, valor: Decimal) -> Conta:
@@ -40,7 +48,7 @@ class ContaService:
 
         if conta.tipo == Conta.TIPO_BONUS:
 
-            pontos = int(valor // 100)
+            pontos = int(valor // Decimal("100"))
 
             conta.pontuacao += pontos
 
@@ -49,46 +57,46 @@ class ContaService:
         return conta
     
     @staticmethod
-    def debitar(numero: str, valor: Decimal) -> Conta:
+    def debitar(numero: str, valor: Decimal) -> 'Conta':
         if valor <= 0:
-            raise ValueError("Valor inválido.")
-
+            raise ValueError("O valor de débito deve ser positivo.")
+        
         conta = ContaService._get_conta(numero)
-
+        
         if conta.saldo < valor:
-            raise ValueError("Saldo insuficiente.")
-
-        conta.saldo -= valor
-
+            raise ValueError("Saldo insuficiente para realizar o débito.")
+        
+        conta.saldo -= valor 
         conta.save()
-
         return conta
     
     @staticmethod
     @transaction.atomic
-    def transferir(origem_num: str, destino_num: str, valor: Decimal):
+    def transferir(numero_origem: str, numero_destino: str, valor: Decimal):
         if valor <= 0:
-            raise ValueError("Valor inválido.")
+            raise ValueError("O valor da transferência deve ser positivo.")
+        if numero_origem == numero_destino:
+            raise ValueError("Conta de origem e destino não podem ser iguais.")
 
-        origem = ContaService._get_conta(origem_num)
-        destino = ContaService._get_conta(destino_num)
+        conta_origem = ContaService._get_conta(numero_origem)
+        conta_destino = ContaService._get_conta(numero_destino)
+        
+        if conta_origem.saldo < valor:
+            raise ValueError("Saldo insuficiente na conta de origem.")
 
-        if origem.saldo < valor:
-            raise ValueError("Saldo insuficiente.")
+        conta_origem.saldo -= valor
+        conta_destino.saldo += valor
 
-        origem.saldo -= valor
-        destino.saldo += valor
+        if conta_destino.tipo == Conta.TIPO_BONUS:
 
-        if destino.tipo == Conta.TIPO_BONUS:
+            pontos = int(valor // Decimal("200"))
 
-            pontos = int(valor // 200)
+            conta_destino.pontuacao += pontos
 
-            destino.pontuacao += pontos
+        conta_origem.save()
+        conta_destino.save()    
 
-        origem.save()
-        destino.save()
-
-        return origem, destino
+        return conta_origem, conta_destino
     
     @staticmethod
     def render_juros(taxa_percentual: Decimal):
@@ -96,9 +104,12 @@ class ContaService:
             tipo=Conta.TIPO_POUPANCA
         )
 
+        if taxa_percentual <= 0:
+            raise ValueError("Taxa de juros inválida.")
+
         for conta in contas_poupanca:
 
-            rendimento = conta.saldo * (taxa_percentual / 100)
+            rendimento = conta.saldo * (taxa_percentual / Decimal("100"))
 
             conta.saldo += rendimento
 
