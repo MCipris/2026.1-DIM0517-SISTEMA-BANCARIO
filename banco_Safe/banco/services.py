@@ -48,6 +48,17 @@ class ContaService:
         return conta.saldo
         
     @staticmethod
+    def consultar_conta(numero: str) -> dict:
+        conta = ContaService._get_conta(numero)
+
+        return {
+            "numero": conta.numero,
+            "tipo": conta.tipo,
+            "saldo": conta.saldo,
+            "pontuacao": conta.pontuacao
+        }
+    
+    @staticmethod
     def creditar(numero: str, valor: float) -> Conta:
         if valor <= 0:
             raise ValueError("O valor deve ser maior que zero.")
