@@ -14,10 +14,8 @@ class Conta(models.Model):
         (TIPO_POUPANCA, "Conta Poupança"),
     )
 
-    usuario = models.OneToOneField(
-        User,
-        on_delete=models.CASCADE,
-        related_name="conta"
+    usuario = models.CharField(
+        max_length=20
     )
 
     numero = models.CharField(
@@ -25,10 +23,8 @@ class Conta(models.Model):
         unique=True
     )
 
-    saldo = models.DecimalField(
-        max_digits=12,
-        decimal_places=2,
-        default=Decimal("0.00")
+    saldo = models.FloatField(
+        default=0
     )
 
     tipo = models.CharField(
