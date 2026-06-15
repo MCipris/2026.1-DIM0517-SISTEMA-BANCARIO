@@ -1,25 +1,102 @@
-import json
-from django.shortcuts import render
-from decimal import Decimal, InvalidOperation
-from django.http import JsonResponse
-from django.views.decorators.csrf import csrf_exempt
-from .services import ContaService
+from rest_framework.views import APIView
+from rest_framework.response import Response
+from rest_framework import status
 
-@csrf_exempt
-def cadastrar_conta_view(request):
-    if request.method == 'POST':
-        data = json.loads(request.body)
-        numero = data.get('numero')
-        tipo_conta = data.get('tipo', 'SIMPLES').upper()
-        saldo_inicial_str = data.get('saldo_inicial')
-        
-        try:
-            if tipo_conta == 'POUPANCA' and saldo_inicial_str is None:
-                raise ValueError("É obrigatório informar o saldo_inicial para criar uma Conta Poupança.")
-            
-            saldo_inicial = Decimal(saldo_inicial_str) if saldo_inicial_str is not None else Decimal('0.00')
-            
-            ContaService.cadastrar_conta(numero, tipo_conta, saldo_inicial)
-            return JsonResponse({"mensagem": f"Conta {tipo_conta} cadastrada com sucesso."}, status=201)
-        except (ValueError, InvalidOperation) as e:
-            return JsonResponse({"erro": str(e)}, status=400)
+from .services import ContaService
+from .models import Conta
+from .serializers import ContaSerializer
+
+class ContaCreateView(APIView):
+
+    def post(self, request):
+
+        conta = ContaService.cadastrar_conta(
+            usuario_conta=request.data["usuario"],
+            numero_conta=request.data["numero"],
+            tipo_conta=request.data.get(
+                "tipo",
+                Conta.TIPO_SIMPLES
+            )
+        )
+
+        serializer = ContaSerializer(conta)
+
+        return Response(
+            serializer.data,
+            status=status.HTTP_201_CREATED
+        )
+
+class ContaDetailView(APIView):
+    def get(self, request, numero_conta):
+
+        conta = ContaService._get_conta(numero_conta)
+
+        serializer = ContaSerializer(conta)
+
+        return Response(serializer.data)
+
+class SaldoView(APIView):
+    def get(self, request, numero_conta):
+
+        conta = ContaService._get_conta(numero_conta)
+
+        return Response({
+            "saldo": conta.saldo
+        })
+
+class ContaCreditoView(APIView):
+
+    def put(self, request, numero_conta):
+
+        conta = Conta.objects.get(numero=numero_conta)
+
+        conta = ContaService.creditar(
+            conta.numero,
+            float(request.data["valor"])
+        )
+
+        serializer = ContaSerializer(conta)
+
+        return Response(serializer.data)
+    
+class ContaDebitoView(APIView):
+
+    def put(self, request, numero_conta):
+
+        conta = Conta.objects.get(numero=numero_conta)
+
+        conta = ContaService.debitar(
+            conta.numero,
+            float(request.data["valor"])
+        )
+
+        serializer = ContaSerializer(conta)
+
+        return Response(serializer.data)
+    
+class TransferenciaView(APIView):
+    def put(self, request):
+
+        ContaService.transferir(
+            request.data["from"],
+            request.data["to"],
+            float(request.data["amount"])
+        )
+
+        return Response({
+            "message": "Transferência realizada com sucesso."
+        })
+    
+class ContaRendimentoView(APIView):
+
+    def put(self, request):
+
+        taxa = float(
+            request.data["taxa"]
+        )
+
+        ContaService.render_juros(taxa)
+
+        return Response({
+            "mensagem": "Rendimento aplicado."
+        })
