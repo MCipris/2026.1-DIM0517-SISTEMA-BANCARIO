@@ -48,6 +48,17 @@ class ContaService:
         return conta.saldo
         
     @staticmethod
+    def consultar_conta(numero: str) -> dict:
+        conta = ContaService._get_conta(numero)
+
+        return {
+            "numero": conta.numero,
+            "tipo": conta.tipo,
+            "saldo": conta.saldo,
+            "pontuacao": conta.pontuacao
+        }
+    
+    @staticmethod
     def creditar(numero: str, valor: float) -> Conta:
         if valor <= 0:
             raise ValueError("O valor deve ser maior que zero.")
@@ -73,7 +84,7 @@ class ContaService:
         
         conta = ContaService._get_conta(numero)
         
-        if conta.tipo_conta in [Conta.TIPO_SIMPLES, Conta.TIPO_BONUS]:
+        if conta.tipo in [Conta.TIPO_SIMPLES, Conta.TIPO_BONUS]:
             if (conta.saldo - valor) < -1000.00:
                 raise ValueError("Operação negada. O limite de saldo negativo (R$ -1000,00) seria ultrapassado.")
         elif conta.saldo < valor:
@@ -94,7 +105,7 @@ class ContaService:
         conta_origem = ContaService._get_conta(numero_origem)
         conta_destino = ContaService._get_conta(numero_destino)
         
-        if conta_origem.tipo_conta in [Conta.TIPO_SIMPLES, Conta.TIPO_BONUS]:
+        if conta_origem.tipo in [Conta.TIPO_SIMPLES, Conta.TIPO_BONUS]:
             if (conta_origem.saldo - valor) < -1000.00:
                 raise ValueError("Operação negada. O limite de saldo negativo (R$ -1000,00) seria ultrapassado na conta de origem.")
         elif conta_origem.saldo < valor:
@@ -108,6 +119,7 @@ class ContaService:
             pontos = int(valor // 150)
 
             conta_destino.pontuacao += pontos
+
 
         conta_origem.save()
         conta_destino.save()    
