@@ -51,13 +51,16 @@ jobs:
           tags: ${{ vars.DOCKERHUB_USERNAME }}/sistema-bancario:build-${{ github.run_number }}
       
   tag:
-  if: ${{ github.head_ref  == "staging" and github.event_name == "pull_request"}}
+  if: ${{ github.head_ref  == "staging" && github.event_name == "pull_request" }}
+  
   runs-on: ubuntu-latest
   steps:
-    - uses: actions/checkout@v1
+    - name: Checkout do código
+      uses: actions/checkout@v4
+
     - name: 'Definir tag caso a branch head seja staging'
       run: |
-        prev_tag=${git describe --tags --abbrev=0}
+        prev_tag=$(git describe --tags --abbrev=0)
         readarray -d "." -t array <<< "$prev_tag"
         TAG_NAME=${array[0]}"."$((array[1] + 1))
         git tag $TAG_NAME
