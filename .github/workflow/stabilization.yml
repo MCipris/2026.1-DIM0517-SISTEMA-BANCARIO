@@ -1,0 +1,93 @@
+name: Stabilization
+
+on:
+  pull_request:
+    branches:
+      - staging
+
+jobs:
+  tag:
+    if: ${{ github.head_ref  == "main" }}
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v1
+      - name: 'Definir tag caso a brach head seja main'
+        run: |
+          prev_tag=${git describe --tags --abbrev=0}
+          readarray -d "." -t array <<< "$prev_tag"
+          TAG_NAME=${array[0]}"."$((array[1] + 1))
+          git tag $TAG_NAME
+          git push origin $TAG_NAME
+
+  bugfixes-from-staging:
+      if: github.event.pull_request.merged == true && startsWith(github.head_ref, 'bugfix')
+      runs-on: ubuntu-latest
+      steps:
+        - name: Checkout do código
+          uses: actions/checkout@v4
+          with:
+            fetch-depth: 0
+
+        - name: Configurar o Python
+          uses: actions/setup-python@v5
+          with:
+            python-version: '3.12'
+
+        - name: Resolver Dependências
+          run: |
+            python -m pip install --upgrade pip
+            pip install -r requirements.txt
+            pip install ruff 
+        
+        - name: Buildar o Sistema
+          run: |
+            python -m compileall .
+
+        - name: Procura erros de código com o Ruff Lint
+          run: ruff check .
+
+        - name: Executar Testes Unitários
+          working-directory: ./2026.1-DIM9517-SISTEMA-BANCARIO/banco_Safe
+          run: |
+            python manage.py test
+
+        - name: Determinar e Criar Nova Tag RC
+          id: docker_tag
+          env:
+            GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          run: |
+            git config --global user.name "github-actions[bot]"
+            git config --global user.email "github-actions[bot]@users.noreply.github.com"
+            
+            LATEST_RC=$(git tag -l "rc-*" --sort=-v:refname | head -n 1)
+            
+            if [ -z "$LATEST_RC" ]; then
+              NEW_RC="rc-1.0.1"
+            else
+              VERSION_NUM=${LATEST_RC#rc-}
+              
+              POINTS=$(tr -cd '.' <<< "$VERSION_NUM" | wc -m)
+              
+              if [ "$POINTS" -eq 1 ]; then
+                NEW_RC="rc-${VERSION_NUM}.1"
+              else
+                IFS='.' read -r X Y Z <<< "$VERSION_NUM"
+                NEW_RC="rc-$X.$Y.$((Z + 1))"
+              fi
+            fi
+            
+            echo "Nova tag gerada: $NEW_RC"
+            git tag $NEW_RC
+            git push origin $NEW_RC
+            
+            echo "tag_name=$NEW_RC" >> $GITHUB_OUTPUT
+
+        - name: Gerar pacote ZIP do sistema
+          run: |
+            zip -r ${{ steps.docker_tag.outputs.tag_name }}.zip . -x "*.git*" "*venv*" "*__pycache__*"
+
+        - name: Disponibilizar a versão do sistema para Download
+          uses: actions/upload-artifact@v4
+          with:
+            name: ${{ steps.docker_tag.outputs.tag_name }}
+            path: ${{ steps.docker_tag.outputs.tag_name }}.zip
