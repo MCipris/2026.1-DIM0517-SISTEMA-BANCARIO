@@ -1,0 +1,15 @@
+[tool.ruff]
+line-length = 120
+
+exclude = [
+    ".git",
+    "__pycache__",
+    "migrations",
+    "venv",
+    "env",
+]
+
+[tool.ruff.lint]
+select = ["E", "F", "I"]
+
+ignore = []
