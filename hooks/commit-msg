@@ -1,0 +1,18 @@
+#!/bin/python
+import sys
+import re 
+
+def main():
+    msg = open(sys.argv[1]).read()
+    cmp = re.match(r"^#(\d+) -", msg)
+    
+    if cmp:
+        print(cmp.group(1))
+
+        sys.exit(0)
+    else:
+        sys.exit(1)
+
+
+if __name__=="__main__":
+    main()
