@@ -24,4 +24,4 @@ jobs:
           REPO: ${{ github.repository }}
           PR_NUMBER: ${{ github.event.pull_request.number }}
           TARGET_BRANCH: ${{ github.base_ref }}
-        run: python scripts/script-valida-pr.py
+        run: python scripts/verify-pr.py
