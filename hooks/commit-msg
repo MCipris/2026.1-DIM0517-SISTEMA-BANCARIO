@@ -1,0 +1,48 @@
+#!/bin/python
+import sys
+import re 
+import urllib.request
+import urllib.error
+
+# COLOQUE OS DADOS DO SEU REPOSITÓRIO AQUI:
+DONO_DO_REPO = "MCipris"
+NOME_DO_REPO = "2026.1-DIM0517-SISTEMA-BANCARIO"
+
+def issue_existe_no_github(numero_issue):
+    url = f"https://api.github.com/repos/{DONO_DO_REPO}/{NOME_DO_REPO}/issues/{numero_issue}"
+    
+    req = urllib.request.Request(url, headers={'User-Agent': 'Git-Hook-Validator'})
+    
+    try:
+        with urllib.request.urlopen(req) as response:
+            if response.status == 200:
+                return True
+    except urllib.error.HTTPError as e:
+        if e.code == 404:
+            return False
+        print(f"\n[Aviso] Erro ao conectar à API do GitHub: HTTP {e.code}")
+    except Exception as e:
+        print(f"\n[Aviso] Erro de conexão de rede: {e}")
+        
+    return False
+
+def main():
+    msg = open(sys.argv[1]).read()
+    cmp = re.match(r"^#(\d+) -", msg)
+    
+    if cmp:
+        numero_issue = cmp.group(1)
+        print(f"Validando a issue #{numero_issue} no GitHub...")
+        
+        if issue_existe_no_github(numero_issue):
+            print("Sucesso: Issue válida encontrada!")
+            sys.exit(0)
+        else:
+            print(f"Erro: A issue #{numero_issue} não existe no repositório {DONO_DO_REPO}/{NOME_DO_REPO}.")
+            sys.exit(1)
+    else:
+        print("Erro: A mensagem do commit deve começar com '#NUM_ISSUE - '. Ex: '#12 - Meu commit'")
+        sys.exit(1)
+
+if __name__=="__main__":
+    main()
